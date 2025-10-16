@@ -41,16 +41,27 @@ public class WebSecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests((authorize) ->
-                        authorize.requestMatchers("/api/auth/**").permitAll()
-                                .requestMatchers("/files/**").permitAll()
+                        authorize
 
+                                .requestMatchers(
+                                        "/api/auth/**",
+                                        "/files/**",
+                                        "/swagger-ui.html",
+                                        "/swagger-ui/**",
+                                        "/v3/api-docs",
+                                        "/v3/api-docs/**"
+                                ).permitAll()
+
+                                // semua URL untuk MAHASISWA
                                 .requestMatchers(HttpMethod.POST, "/api/perizinan").hasAuthority("MAHASISWA")
                                 .requestMatchers(HttpMethod.GET, "/api/perizinan/saya").hasAuthority("MAHASISWA")
                                 .requestMatchers(HttpMethod.PUT, "/api/perizinan/{id}/revisi").hasAuthority("MAHASISWA")
+                                .requestMatchers(HttpMethod.DELETE, "/api/perizinan/{id}").hasAuthority("MAHASISWA")
 
+                                // URL untuk ADMIN
                                 .requestMatchers("/api/perizinan/**").hasAuthority("ADMIN")
 
-                                // Izinkan akses publik ke file
+                                // Semua request lain harus terotentikasi
                                 .anyRequest().authenticated()
                 ).sessionManagement( session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -61,3 +72,4 @@ public class WebSecurityConfig {
         return http.build();
     }
 }
+

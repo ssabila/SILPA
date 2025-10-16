@@ -36,10 +36,6 @@ public class PerizinanServiceImpl implements PerizinanService {
         this.fileStorageService = fileStorageService;
     }
 
-    // ===================================
-    // == FUNGSI UNTUK MAHASISWA ==
-    // ===================================
-
     @Override
     public PerizinanDto ajukanPerizinan(AjukanIzinDto ajukanIzinDto, List<MultipartFile> daftarBerkas) {
         Pengguna mahasiswa = getCurrentPengguna();

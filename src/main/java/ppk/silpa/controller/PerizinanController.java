@@ -46,6 +46,13 @@ public class PerizinanController {
         return ResponseEntity.ok(perizinanService.getPerizinanByMahasiswa());
     }
 
+    @PreAuthorize("hasAuthority('MAHASISWA')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> hapusIzin(@PathVariable("id") Long perizinanId) {
+        perizinanService.hapusPerizinan(perizinanId);
+        return ResponseEntity.ok("Perizinan dengan ID " + perizinanId + " berhasil dihapus.");
+    }
+
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping
     public ResponseEntity<List<PerizinanDto>> getSemuaPerizinan() {
