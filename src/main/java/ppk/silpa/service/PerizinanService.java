@@ -17,5 +17,6 @@ public interface PerizinanService {
     // Metode untuk Admin
     List<PerizinanDto> getSemuaPerizinan();
     PerizinanDto perbaruiStatusPerizinan(Long perizinanId, UpdateStatusDto updateStatusDto);
+
 }
 

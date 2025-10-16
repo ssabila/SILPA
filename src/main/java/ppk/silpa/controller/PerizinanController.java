@@ -1,15 +1,15 @@
 package ppk.silpa.controller;
 
-import ppk.silpa.dto.AjukanIzinDto;
-import ppk.silpa.dto.PerizinanDto;
-import ppk.silpa.dto.UpdateStatusDto;
-import ppk.silpa.service.PerizinanService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import ppk.silpa.dto.AjukanIzinDto;
+import ppk.silpa.dto.PerizinanDto;
+import ppk.silpa.dto.UpdateStatusDto;
+import ppk.silpa.service.PerizinanService;
 
 import java.util.List;
 
@@ -23,7 +23,6 @@ public class PerizinanController {
         this.perizinanService = perizinanService;
     }
 
-    // == ENDPOINTS MAHASISWA ==
     @PreAuthorize("hasAuthority('MAHASISWA')")
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<PerizinanDto> ajukanIzin(@Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
@@ -33,12 +32,20 @@ public class PerizinanController {
     }
 
     @PreAuthorize("hasAuthority('MAHASISWA')")
+    @PutMapping(value = "/{id}/revisi", consumes = {"multipart/form-data"})
+    public ResponseEntity<PerizinanDto> revisiIzin(@PathVariable("id") Long perizinanId,
+                                                   @Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
+                                                   @RequestPart("berkas") List<MultipartFile> berkasBaru) {
+        PerizinanDto perizinanDirevisi = perizinanService.perbaruiPerizinan(perizinanId, ajukanIzinDto, berkasBaru);
+        return ResponseEntity.ok(perizinanDirevisi);
+    }
+
+    @PreAuthorize("hasAuthority('MAHASISWA')")
     @GetMapping("/saya")
     public ResponseEntity<List<PerizinanDto>> getPerizinanSaya() {
         return ResponseEntity.ok(perizinanService.getPerizinanByMahasiswa());
     }
 
-    // == ENDPOINTS ADMIN ==
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping
     public ResponseEntity<List<PerizinanDto>> getSemuaPerizinan() {
@@ -59,3 +66,4 @@ public class PerizinanController {
         return ResponseEntity.ok(perizinanDiperbarui);
     }
 }
+

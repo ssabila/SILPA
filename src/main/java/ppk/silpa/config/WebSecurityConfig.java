@@ -42,7 +42,15 @@ public class WebSecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests((authorize) ->
                         authorize.requestMatchers("/api/auth/**").permitAll()
-                                .requestMatchers("/files/**").permitAll() // Izinkan akses publik ke file
+                                .requestMatchers("/files/**").permitAll()
+
+                                .requestMatchers(HttpMethod.POST, "/api/perizinan").hasAuthority("MAHASISWA")
+                                .requestMatchers(HttpMethod.GET, "/api/perizinan/saya").hasAuthority("MAHASISWA")
+                                .requestMatchers(HttpMethod.PUT, "/api/perizinan/{id}/revisi").hasAuthority("MAHASISWA")
+
+                                .requestMatchers("/api/perizinan/**").hasAuthority("ADMIN")
+
+                                // Izinkan akses publik ke file
                                 .anyRequest().authenticated()
                 ).sessionManagement( session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

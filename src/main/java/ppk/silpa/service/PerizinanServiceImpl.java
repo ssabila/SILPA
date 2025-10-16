@@ -1,6 +1,11 @@
 package ppk.silpa.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ppk.silpa.dto.AjukanIzinDto;
 import ppk.silpa.dto.PerizinanDto;
 import ppk.silpa.dto.UpdateStatusDto;
@@ -11,11 +16,6 @@ import ppk.silpa.repository.BerkasRepository;
 import ppk.silpa.repository.PenggunaRepository;
 import ppk.silpa.repository.PerizinanRepository;
 import ppk.silpa.util.PerizinanMapper;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,6 +35,10 @@ public class PerizinanServiceImpl implements PerizinanService {
         this.berkasRepository = berkasRepository;
         this.fileStorageService = fileStorageService;
     }
+
+    // ===================================
+    // == FUNGSI UNTUK MAHASISWA ==
+    // ===================================
 
     @Override
     public PerizinanDto ajukanPerizinan(AjukanIzinDto ajukanIzinDto, List<MultipartFile> daftarBerkas) {
@@ -59,10 +63,49 @@ public class PerizinanServiceImpl implements PerizinanService {
             berkas.setUrlAksesFile("/files/" + perizinanTersimpan.getId() + "/" + namaFile);
             berkas.setPerizinan(perizinanTersimpan);
             berkasRepository.save(berkas);
-            perizinanTersimpan.getDaftarBerkas().add(berkas);
         }
 
-        return PerizinanMapper.mapToPerizinanDto(perizinanTersimpan);
+        return PerizinanMapper.mapToPerizinanDto(perizinanRepository.findById(perizinanTersimpan.getId()).get());
+    }
+
+    @Override
+    public PerizinanDto perbaruiPerizinan(Long perizinanId, AjukanIzinDto ajukanIzinDto, List<MultipartFile> berkasBaru) {
+        Pengguna mahasiswa = getCurrentPengguna();
+
+        Perizinan perizinan = perizinanRepository.findById(perizinanId)
+                .orElseThrow(() -> new ResourceNotFoundException("Perizinan", "id", perizinanId));
+
+        if (!perizinan.getMahasiswa().getId().equals(mahasiswa.getId())) {
+            throw new SilpaAPIException(HttpStatus.FORBIDDEN, "Anda tidak memiliki hak untuk mengubah perizinan ini.");
+        }
+        if (perizinan.getStatus() != StatusPengajuan.PERLU_REVISI) {
+            throw new SilpaAPIException(HttpStatus.BAD_REQUEST, "Hanya perizinan dengan status PERLU_REVISI yang dapat diubah.");
+        }
+
+        perizinan.setJenisIzin(ajukanIzinDto.getJenisIzin());
+        perizinan.setDetailIzin(ajukanIzinDto.getDetailIzin());
+        perizinan.setTanggalMulai(ajukanIzinDto.getTanggalMulai());
+        perizinan.setTanggalSelesai(ajukanIzinDto.getTanggalSelesai());
+        perizinan.setDeskripsi(ajukanIzinDto.getDeskripsi());
+        perizinan.setBobotKehadiran(hitungBobotKehadiran(perizinan.getJenisIzin(), perizinan.getDetailIzin()));
+        perizinan.setStatus(StatusPengajuan.DIAJUKAN);
+        perizinan.setCatatanAdmin(null);
+
+        // Hapus berkas lama (orphanRemoval=true akan otomatis menghapus dari DB)
+        perizinan.getDaftarBerkas().clear();
+
+        // Tambahkan berkas baru
+        for (MultipartFile file : berkasBaru) {
+            String namaFile = fileStorageService.simpanFile(file, perizinan.getId());
+            Berkas berkas = new Berkas();
+            berkas.setNamaFile(namaFile);
+            berkas.setUrlAksesFile("/files/" + perizinan.getId() + "/" + namaFile);
+            berkas.setPerizinan(perizinan);
+            perizinan.getDaftarBerkas().add(berkas);
+        }
+
+        Perizinan perizinanDiperbarui = perizinanRepository.save(perizinan);
+        return PerizinanMapper.mapToPerizinanDto(perizinanDiperbarui);
     }
 
     @Override
@@ -75,55 +118,18 @@ public class PerizinanServiceImpl implements PerizinanService {
     }
 
     @Override
-    public PerizinanDto getPerizinanById(Long perizinanId) {
-        Perizinan perizinan = perizinanRepository.findById(perizinanId)
-                .orElseThrow(() -> new ResourceNotFoundException("Perizinan", "id", perizinanId));
-        return PerizinanMapper.mapToPerizinanDto(perizinan);
-    }
-
-    @Override
-    public PerizinanDto perbaruiPerizinan(Long perizinanId, AjukanIzinDto ajukanIzinDto, List<MultipartFile> berkas) {
+    public void hapusPerizinan(Long perizinanId) {
         Pengguna mahasiswa = getCurrentPengguna();
         Perizinan perizinan = perizinanRepository.findById(perizinanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Perizinan", "id", perizinanId));
 
         if (!perizinan.getMahasiswa().getId().equals(mahasiswa.getId())) {
-            throw new SilpaAPIException(HttpStatus.FORBIDDEN, "Anda tidak memiliki akses untuk mengubah perizinan ini.");
+            throw new SilpaAPIException(HttpStatus.FORBIDDEN, "Anda tidak memiliki hak untuk menghapus perizinan ini.");
         }
-
-        // Hanya bisa diubah jika statusnya PERLU_REVISI
-        if (perizinan.getStatus() != StatusPengajuan.PERLU_REVISI) {
-            throw new SilpaAPIException(HttpStatus.BAD_REQUEST, "Perizinan ini tidak dapat diubah lagi.");
+        if (perizinan.getStatus() != StatusPengajuan.DIAJUKAN && perizinan.getStatus() != StatusPengajuan.PERLU_REVISI) {
+            throw new SilpaAPIException(HttpStatus.BAD_REQUEST, "Hanya perizinan yang belum diproses yang dapat dihapus.");
         }
-
-        // Hapus berkas lama jika ada berkas baru
-        if (berkas != null && !berkas.isEmpty()) {
-            berkasRepository.deleteAll(perizinan.getDaftarBerkas());
-            perizinan.getDaftarBerkas().clear();
-        }
-
-        // Update data
-        perizinan.setJenisIzin(ajukanIzinDto.getJenisIzin());
-        perizinan.setDetailIzin(ajukanIzinDto.getDetailIzin());
-        // ... update field lainnya
-        perizinan.setStatus(StatusPengajuan.DIAJUKAN); // Status kembali menjadi diajukan
-
-        Perizinan perizinanDiperbarui = perizinanRepository.save(perizinan);
-
-        // Tambah berkas baru
-        for (MultipartFile file : berkas) {
-            String namaFile = fileStorageService.simpanFile(file, perizinanDiperbarui.getId());
-            // ... simpan berkas baru ...
-        }
-
-        return PerizinanMapper.mapToPerizinanDto(perizinanDiperbarui);
-    }
-
-    @Override
-    public void hapusPerizinan(Long perizinanId) {
-        // Implementasi logika hapus
-        // Pastikan hanya mahasiswa yang bersangkutan yang bisa menghapus
-        // Dan hanya jika statusnya masih DIAJUKAN atau PERLU_REVISI
+        perizinanRepository.delete(perizinan);
     }
 
     @Override
@@ -131,6 +137,13 @@ public class PerizinanServiceImpl implements PerizinanService {
         return perizinanRepository.findAll().stream()
                 .map(PerizinanMapper::mapToPerizinanDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public PerizinanDto getPerizinanById(Long perizinanId) {
+        Perizinan perizinan = perizinanRepository.findById(perizinanId)
+                .orElseThrow(() -> new ResourceNotFoundException("Perizinan", "id", perizinanId));
+        return PerizinanMapper.mapToPerizinanDto(perizinan);
     }
 
     @Override
@@ -155,6 +168,7 @@ public class PerizinanServiceImpl implements PerizinanService {
         if (jenisIzin == JenisIzin.SAKIT) {
             return detailIzin == DetailIzin.RAWAT_INAP ? 100 : 60;
         }
-        return 100; // Untuk dispensasi dan izin penting
+        return 100;
     }
 }
+
