@@ -19,17 +19,17 @@ import java.util.List;
 public class PerizinanController {
 
     private final PerizinanService perizinanService;
+    private final ValidasiBerkasService validasiBerkas; // Tambahkan ini
 
-    public PerizinanController(PerizinanService perizinanService, ValidasiBerkasService validasiBerkas) {
+    public PerizinanController(PerizinanService perizinanService, ValidasiBerkasService validasiBerkas) { // Perbarui konstruktor
         this.perizinanService = perizinanService;
-        this.validasiBerkas = validasiBerkas;
+        this.validasiBerkas = validasiBerkas; // Tambahkan ini
     }
 
-    @PreAuthorize("hasAuthority('MAHASISWA')")
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<PerizinanDto> ajukanIzin(@Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
                                                    @RequestPart("berkas") List<MultipartFile> berkas) {
-        ValidasiBerkasService.validasiBerkas(
+        validasiBerkas.validasiBerkas( // Panggil validasi
                 ajukanIzinDto.getJenisIzin(),
                 ajukanIzinDto.getDetailIzin(),
                 berkas);
@@ -40,9 +40,17 @@ public class PerizinanController {
 
     @PreAuthorize("hasAuthority('MAHASISWA')")
     @PutMapping(value = "/{id}/revisi", consumes = {"multipart/form-data"})
-    public ResponseEntity<PerizinanDto> revisiIzin(@PathVariable("id") Long perizinanId,
-                                                   @Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
-                                                   @RequestPart("berkas") List<MultipartFile> berkasBaru) {
+    public ResponseEntity<PerizinanDto> revisiIzin(
+            @PathVariable("id") Long perizinanId,
+            @Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
+            @RequestPart("berkas") List<MultipartFile> berkasBaru) {
+
+        // Validasi berkas
+        validasiBerkas.validasiBerkas(
+                ajukanIzinDto.getJenisIzin(),
+                ajukanIzinDto.getDetailIzin(),
+                berkasBaru);
+
         PerizinanDto perizinanDirevisi = perizinanService.perbaruiPerizinan(perizinanId, ajukanIzinDto, berkasBaru);
         return ResponseEntity.ok(perizinanDirevisi);
     }
@@ -68,16 +76,17 @@ public class PerizinanController {
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/{id}")
-    public ResponseEntity<PerizinanDto> getPerizinanById(@PathVariable("id") Long perizinanId){
+    public ResponseEntity<PerizinanDto> getPerizinanById(@PathVariable("id") Long perizinanId) {
         return ResponseEntity.ok(perizinanService.getPerizinanById(perizinanId));
     }
 
     @PreAuthorize("hasAuthority('ADMIN')")
     @PutMapping("/{id}/status")
-    public ResponseEntity<PerizinanDto> perbaruiStatus(@PathVariable("id") Long perizinanId,
-                                                       @Valid @RequestBody UpdateStatusDto updateStatusDto) {
+    public ResponseEntity<PerizinanDto> perbaruiStatus(
+            @PathVariable("id") Long perizinanId,
+            @Valid @RequestBody UpdateStatusDto updateStatusDto) {
+
         PerizinanDto perizinanDiperbarui = perizinanService.perbaruiStatusPerizinan(perizinanId, updateStatusDto);
         return ResponseEntity.ok(perizinanDiperbarui);
     }
 }
-
