@@ -1,5 +1,7 @@
 package ppk.silpa.exception;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,6 +14,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ResponEksepsi> tanganiResourceNotFoundException(ResourceNotFoundException ex) {
@@ -61,6 +65,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ResponEksepsi> tanganiEksepsiUmum(Exception ex) {
+        logger.error("Terjadi eksepsi yang tidak ditangani:", ex);
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ResponEksepsi(
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),

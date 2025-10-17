@@ -32,7 +32,7 @@ public class PenggunaController {
         return ResponseEntity.ok(ApiResponse.sukses("Profil berhasil diperbarui", diperbarui));
     }
 
-    @PutMapping("/saya/password")
+    @PutMapping("/saya/kata-sandi")
     public ResponseEntity<ApiResponse<String>> gantiKataSandi(
             @Valid @RequestBody GantiKataSandiDto gantiKataSandiDto) {
         layananPengguna.gantiKataSandi(gantiKataSandiDto);
