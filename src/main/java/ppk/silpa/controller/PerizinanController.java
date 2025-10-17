@@ -10,6 +10,7 @@ import ppk.silpa.dto.AjukanIzinDto;
 import ppk.silpa.dto.PerizinanDto;
 import ppk.silpa.dto.UpdateStatusDto;
 import ppk.silpa.service.PerizinanService;
+import ppk.silpa.service.ValidasiBerkasService;
 
 import java.util.List;
 
@@ -19,14 +20,20 @@ public class PerizinanController {
 
     private final PerizinanService perizinanService;
 
-    public PerizinanController(PerizinanService perizinanService) {
+    public PerizinanController(PerizinanService perizinanService, ValidasiBerkasService validasiBerkas) {
         this.perizinanService = perizinanService;
+        this.validasiBerkas = validasiBerkas;
     }
 
     @PreAuthorize("hasAuthority('MAHASISWA')")
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<PerizinanDto> ajukanIzin(@Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
                                                    @RequestPart("berkas") List<MultipartFile> berkas) {
+        ValidasiBerkasService.validasiBerkas(
+                ajukanIzinDto.getJenisIzin(),
+                ajukanIzinDto.getDetailIzin(),
+                berkas);
+
         PerizinanDto perizinanBaru = perizinanService.ajukanPerizinan(ajukanIzinDto, berkas);
         return new ResponseEntity<>(perizinanBaru, HttpStatus.CREATED);
     }

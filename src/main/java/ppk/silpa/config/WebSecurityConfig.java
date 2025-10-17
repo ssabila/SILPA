@@ -42,6 +42,10 @@ public class WebSecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests((authorize) ->
                         authorize
+                                .requestMatchers(
+                                        "/api/pengguna/saya",
+                                        "/api/pengguna/saya/kata-sandi"
+                                ).authenticated()
 
                                 .requestMatchers(
                                         "/api/auth/**",

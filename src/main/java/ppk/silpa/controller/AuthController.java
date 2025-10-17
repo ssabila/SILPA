@@ -3,6 +3,7 @@ package ppk.silpa.controller;
 import ppk.silpa.dto.JwtAuthResponseDto;
 import ppk.silpa.dto.LoginDto;
 import ppk.silpa.dto.RegisterDto;
+import ppk.silpa.dto.ApiResponse;
 import ppk.silpa.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -23,17 +24,16 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<JwtAuthResponseDto> login(@Valid @RequestBody LoginDto loginDto){
+    public ResponseEntity<ApiResponse<JwtAuthResponseDto>> login(@Valid @RequestBody LoginDto loginDto) {
         String token = authService.login(loginDto);
         JwtAuthResponseDto jwtAuthResponse = new JwtAuthResponseDto();
         jwtAuthResponse.setAccessToken(token);
-        return ResponseEntity.ok(jwtAuthResponse);
+        return ResponseEntity.ok(ApiResponse.sukses("Login berhasil", jwtAuthResponse));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@Valid @RequestBody RegisterDto registerDto){
+    public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterDto registerDto) {
         String response = authService.register(registerDto);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        return new ResponseEntity<>(ApiResponse.sukses(response, null), HttpStatus.CREATED);
     }
 }
-
