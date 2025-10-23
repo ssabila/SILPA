@@ -26,9 +26,10 @@ public class PerizinanController {
         this.validasiBerkas = validasiBerkas; // Tambahkan ini
     }
 
+    @PreAuthorize("hasAuthority('MAHASISWA')")
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<PerizinanDto> ajukanIzin(@Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
-                                                   @RequestPart("berkas") List<MultipartFile> berkas) {
+                                                   @RequestPart(value = "berkas", required = false) List<MultipartFile> berkas) {
         validasiBerkas.validasiBerkas( // Panggil validasi
                 ajukanIzinDto.getJenisIzin(),
                 ajukanIzinDto.getDetailIzin(),
@@ -43,7 +44,7 @@ public class PerizinanController {
     public ResponseEntity<PerizinanDto> revisiIzin(
             @PathVariable("id") Long perizinanId,
             @Valid @RequestPart("izin") AjukanIzinDto ajukanIzinDto,
-            @RequestPart("berkas") List<MultipartFile> berkasBaru) {
+            @RequestPart(value = "berkas", required = false) List<MultipartFile> berkasBaru) {
 
         // Validasi berkas
         validasiBerkas.validasiBerkas(
