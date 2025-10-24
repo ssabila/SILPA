@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import ppk.silpa.dto.AjukanIzinDto;
+import ppk.silpa.dto.DetailSesiIzinDto;
 import ppk.silpa.dto.PerizinanDto;
 import ppk.silpa.dto.UpdateStatusDto;
 import ppk.silpa.exception.ResourceNotFoundException;
@@ -17,6 +18,8 @@ import ppk.silpa.repository.PenggunaRepository;
 import ppk.silpa.repository.PerizinanRepository;
 import ppk.silpa.util.PerizinanMapper;
 
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,25 +50,55 @@ public class PerizinanServiceImpl implements PerizinanService {
     public PerizinanDto ajukanPerizinan(AjukanIzinDto ajukanIzinDto, List<MultipartFile> daftarBerkas) {
         Pengguna mahasiswa = getCurrentUser();
 
-        // Gunakan service validasi
-        validasiPerizinanService.validasiTanggalPengajuan(ajukanIzinDto.getJenisIzin(), ajukanIzinDto.getDetailIzin(), ajukanIzinDto.getTanggalMulai());
-        validasiPerizinanService.validasiRangeTanggal(ajukanIzinDto.getTanggalMulai(), ajukanIzinDto.getTanggalSelesai());
-        validasiPerizinanService.validasiTidakAdaDuplikat(mahasiswa.getId(), ajukanIzinDto.getTanggalMulai(), ajukanIzinDto.getTanggalSelesai());
+        // 1. Tentukan Tanggal Mulai dan Selesai secara otomatis
+        LocalDate tanggalMulai = ajukanIzinDto.getDaftarSesi().stream()
+                .map(DetailSesiIzinDto::getTanggal)
+                .min(Comparator.naturalOrder())
+                .orElseThrow(() -> new SilpaAPIException(HttpStatus.BAD_REQUEST, "Daftar sesi tidak valid."));
 
-        // Buat perizinan baru
+        LocalDate tanggalSelesai = ajukanIzinDto.getDaftarSesi().stream()
+                .map(DetailSesiIzinDto::getTanggal)
+                .max(Comparator.naturalOrder())
+                .orElseThrow(() -> new SilpaAPIException(HttpStatus.BAD_REQUEST, "Daftar sesi tidak valid."));
+
+        // 2. Gunakan service validasi
+        validasiPerizinanService.validasiTanggalPengajuan(ajukanIzinDto.getJenisIzin(), ajukanIzinDto.getDetailIzin(), tanggalMulai);
+        // Kita asumsikan validasi 'range' tidak lagi relevan, atau kita ubah
+        // validasiPerizinanService.validasiRangeTanggal(tanggalMulai, tanggalSelesai);
+        validasiPerizinanService.validasiTidakAdaDuplikat(mahasiswa.getId(), tanggalMulai, tanggalSelesai);
+
+        // 3. Buat Perizinan (Induk)
         Perizinan perizinan = new Perizinan();
         perizinan.setMahasiswa(mahasiswa);
         perizinan.setJenisIzin(ajukanIzinDto.getJenisIzin());
         perizinan.setDetailIzin(ajukanIzinDto.getDetailIzin());
-        perizinan.setTanggalMulai(ajukanIzinDto.getTanggalMulai());
-        perizinan.setTanggalSelesai(ajukanIzinDto.getTanggalSelesai());
+        perizinan.setTanggalMulai(tanggalMulai); // Diisi dari langkah 1
+        perizinan.setTanggalSelesai(tanggalSelesai); // Diisi dari langkah 1
         perizinan.setDeskripsi(ajukanIzinDto.getDeskripsi());
         perizinan.setStatus(StatusPengajuan.DIAJUKAN);
         perizinan.setBobotKehadiran(hitungBobotKehadiran(perizinan.getJenisIzin(), perizinan.getDetailIzin()));
 
+        // 4. Ubah DTO Sesi (anak) menjadi Entity Sesi (anak)
+        for (DetailSesiIzinDto sesiDto : ajukanIzinDto.getDaftarSesi()) {
+            DetailSesiIzin sesiEntity = new DetailSesiIzin();
+            sesiEntity.setTanggal(sesiDto.getTanggal());
+            sesiEntity.setNamaMataKuliah(sesiDto.getNamaMataKuliah());
+            sesiEntity.setNamaDosen(sesiDto.getNamaDosen());
+            sesiEntity.setSesi1(sesiDto.isSesi1());
+            sesiEntity.setSesi2(sesiDto.isSesi2());
+            sesiEntity.setSesi3(sesiDto.isSesi3());
+
+            // Set relasi
+            sesiEntity.setPerizinan(perizinan);
+
+            // Tambahkan ke daftar di induk
+            perizinan.getDaftarSesiIzin().add(sesiEntity);
+        }
+
+        // 5. Simpan Induk (Cascade.ALL akan menyimpan anak-anaknya)
         Perizinan perizinanTersimpan = perizinanRepository.save(perizinan);
 
-        // Simpan berkas
+        // 6. Simpan Berkas (Logika ini tetap sama)
         for (MultipartFile file : daftarBerkas) {
             String namaFile = fileStorageService.simpanFile(file, perizinanTersimpan.getId());
             Berkas berkas = new Berkas();
@@ -75,11 +108,10 @@ public class PerizinanServiceImpl implements PerizinanService {
             berkasRepository.save(berkas);
         }
 
+        // 7. Ambil kembali dari DB untuk memastikan semua relasi ter-load
         return PerizinanMapper.mapToPerizinanDto(
                 perizinanRepository.findById(perizinanTersimpan.getId()).get());
     }
-
-    // ... (sisa metode lainnya tetap sama, tidak perlu diubah) ...
 
     @Override
     public PerizinanDto perbaruiPerizinan(Long perizinanId, AjukanIzinDto ajukanIzinDto, List<MultipartFile> berkasBaru) {
@@ -88,37 +120,39 @@ public class PerizinanServiceImpl implements PerizinanService {
         Perizinan perizinan = perizinanRepository.findById(perizinanId)
                 .orElseThrow(() -> new ResourceNotFoundException("Perizinan", "id", perizinanId));
 
-        // Validasi hak akses
         if (!perizinan.getMahasiswa().getId().equals(mahasiswa.getId())) {
-            throw new SilpaAPIException(HttpStatus.FORBIDDEN,
-                    "Anda tidak memiliki hak untuk mengubah perizinan ini.");
+            throw new SilpaAPIException(HttpStatus.FORBIDDEN, "Anda tidak memiliki hak untuk mengubah perizinan ini.");
         }
-
-        // Validasi status - hanya PERLU_REVISI yang boleh direvisi
         if (perizinan.getStatus() != StatusPengajuan.PERLU_REVISI) {
-            throw new SilpaAPIException(HttpStatus.BAD_REQUEST,
-                    "Hanya perizinan dengan status PERLU_REVISI yang dapat diubah.");
+            throw new SilpaAPIException(HttpStatus.BAD_REQUEST, "Hanya perizinan dengan status PERLU_REVISI yang dapat diubah.");
         }
 
-        // VALIDASI: Range tanggal valid
-        validasiPerizinanService.validasiRangeTanggal(ajukanIzinDto.getTanggalMulai(),
-                ajukanIzinDto.getTanggalSelesai());
+        // 1. Tentukan Tanggal Mulai dan Selesai baru
+        LocalDate tanggalMulai = ajukanIzinDto.getDaftarSesi().stream()
+                .map(DetailSesiIzinDto::getTanggal)
+                .min(Comparator.naturalOrder())
+                .orElseThrow(() -> new SilpaAPIException(HttpStatus.BAD_REQUEST, "Daftar sesi tidak valid."));
 
+        LocalDate tanggalSelesai = ajukanIzinDto.getDaftarSesi().stream()
+                .map(DetailSesiIzinDto::getTanggal)
+                .max(Comparator.naturalOrder())
+                .orElseThrow(() -> new SilpaAPIException(HttpStatus.BAD_REQUEST, "Daftar sesi tidak valid."));
 
-        // Update data perizinan
+        // 2. Update data perizinan (Induk)
         perizinan.setJenisIzin(ajukanIzinDto.getJenisIzin());
         perizinan.setDetailIzin(ajukanIzinDto.getDetailIzin());
-        perizinan.setTanggalMulai(ajukanIzinDto.getTanggalMulai());
-        perizinan.setTanggalSelesai(ajukanIzinDto.getTanggalSelesai());
+        perizinan.setTanggalMulai(tanggalMulai);
+        perizinan.setTanggalSelesai(tanggalSelesai);
         perizinan.setDeskripsi(ajukanIzinDto.getDeskripsi());
         perizinan.setBobotKehadiran(hitungBobotKehadiran(perizinan.getJenisIzin(), perizinan.getDetailIzin()));
         perizinan.setStatus(StatusPengajuan.DIAJUKAN);
         perizinan.setCatatanAdmin(null);
 
-        // Hapus berkas lama
+        // 3. Hapus berkas lama dan Sesi lama (orphanRemoval=true akan menghapusnya dari DB)
         perizinan.getDaftarBerkas().clear();
+        perizinan.getDaftarSesiIzin().clear();
 
-        // Tambahkan berkas baru
+        // 4. Tambahkan berkas baru
         for (MultipartFile file : berkasBaru) {
             String namaFile = fileStorageService.simpanFile(file, perizinan.getId());
             Berkas berkas = new Berkas();
@@ -126,6 +160,19 @@ public class PerizinanServiceImpl implements PerizinanService {
             berkas.setUrlAksesFile("/files/" + perizinan.getId() + "/" + namaFile);
             berkas.setPerizinan(perizinan);
             perizinan.getDaftarBerkas().add(berkas);
+        }
+
+        // 5. Tambahkan Sesi baru
+        for (DetailSesiIzinDto sesiDto : ajukanIzinDto.getDaftarSesi()) {
+            DetailSesiIzin sesiEntity = new DetailSesiIzin();
+            sesiEntity.setTanggal(sesiDto.getTanggal());
+            sesiEntity.setNamaMataKuliah(sesiDto.getNamaMataKuliah());
+            sesiEntity.setNamaDosen(sesiDto.getNamaDosen());
+            sesiEntity.setSesi1(sesiDto.isSesi1());
+            sesiEntity.setSesi2(sesiDto.isSesi2());
+            sesiEntity.setSesi3(sesiDto.isSesi3());
+            sesiEntity.setPerizinan(perizinan);
+            perizinan.getDaftarSesiIzin().add(sesiEntity);
         }
 
         Perizinan perizinanDiperbarui = perizinanRepository.save(perizinan);

@@ -26,4 +26,5 @@ public class PerizinanDto {
     private StatusPengajuan status;
     private String catatanAdmin;
     private List<BerkasDto> daftarBerkas;
+    private List<DetailSesiIzinDto> daftarSesi;
 }

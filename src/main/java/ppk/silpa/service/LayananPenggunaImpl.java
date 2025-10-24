@@ -62,17 +62,14 @@ public class LayananPenggunaImpl implements LayananPengguna {
     public void gantiKataSandi(GantiKataSandiDto gantiKataSandiDto) {
         Pengguna pengguna = ambilPenggunaSekarang();
 
-        // Validasi kata sandi lama
         if (!penyandiBentuk.matches(gantiKataSandiDto.getKataSandiLama(), pengguna.getKataSandi())) {
-            throw new SilpaAPIException(HttpStatus.UNAUTHORIZED, "Kata sandi lama tidak sesuai!");
+            throw new SilpaAPIException(HttpStatus.BAD_REQUEST, "Kata sandi lama tidak sesuai!");
         }
 
-        // Validasi kata sandi baru dan konfirmasi
         if (!gantiKataSandiDto.getKataSandiBaru().equals(gantiKataSandiDto.getKonfirmasiKataSandi())) {
             throw new SilpaAPIException(HttpStatus.BAD_REQUEST, "Kata sandi baru dan konfirmasi tidak sesuai!");
         }
 
-        // Jangan boleh sama dengan kata sandi lama
         if (penyandiBentuk.matches(gantiKataSandiDto.getKataSandiBaru(), pengguna.getKataSandi())) {
             throw new SilpaAPIException(HttpStatus.BAD_REQUEST, "Kata sandi baru tidak boleh sama dengan kata sandi lama!");
         }

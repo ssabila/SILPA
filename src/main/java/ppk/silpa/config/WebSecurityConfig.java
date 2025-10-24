@@ -44,7 +44,7 @@ public class WebSecurityConfig {
                         authorize
                                 .requestMatchers(
                                         "/api/pengguna/saya",
-                                        "/api/pengguna/saya/kata-sandi"
+                                        "/api/pengguna/saya/**"
                                 ).authenticated()
 
                                 .requestMatchers(
@@ -53,7 +53,8 @@ public class WebSecurityConfig {
                                         "/swagger-ui.html",
                                         "/swagger-ui/**",
                                         "/v3/api-docs",
-                                        "/v3/api-docs/**"
+                                        "/v3/api-docs/**",
+                                        "/api/info-perizinan/**"
                                 ).permitAll()
 
                                 // semua URL untuk MAHASISWA

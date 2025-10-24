@@ -40,7 +40,7 @@ public class Perizinan {
     @Column(nullable = false)
     private LocalDate tanggalSelesai;
 
-    @Lob // Untuk teks yang lebih panjang
+    @Lob
     private String deskripsi;
 
     private int bobotKehadiran;
@@ -54,4 +54,7 @@ public class Perizinan {
 
     @OneToMany(mappedBy = "perizinan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Berkas> daftarBerkas = new ArrayList<>();
+
+    @OneToMany(mappedBy = "perizinan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DetailSesiIzin> daftarSesiIzin = new ArrayList<>();
 }
