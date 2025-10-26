@@ -12,7 +12,6 @@ public class PerizinanMapper {
 
     public static PerizinanDto mapToPerizinanDto(Perizinan perizinan) {
 
-        // (PERUBAHAN) Map daftar sesi (Entity -> DTO)
         List<DetailSesiIzinDto> daftarSesiDto = perizinan.getDaftarSesiIzin().stream()
                 .map(sesi -> {
                     DetailSesiIzinDto dto = new DetailSesiIzinDto();

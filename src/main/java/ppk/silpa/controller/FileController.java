@@ -28,7 +28,6 @@ public class FileController {
         try {
             contentType = request.getServletContext().getMimeType(resource.getFile().getAbsolutePath());
         } catch (IOException ex) {
-            // fallback
         }
 
         if (contentType == null) {

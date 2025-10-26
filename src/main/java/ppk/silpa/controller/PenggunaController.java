@@ -2,11 +2,9 @@ package ppk.silpa.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import ppk.silpa.dto.ApiResponse;
-import ppk.silpa.dto.GantiKataSandiDto;
-import ppk.silpa.dto.PerbaruiProfilDto;
-import ppk.silpa.dto.ProfilPenggunaDto;
+import ppk.silpa.dto.*;
 import ppk.silpa.service.LayananPengguna;
 
 @RestController
@@ -20,12 +18,14 @@ public class PenggunaController {
     }
 
     @GetMapping("/saya")
+    @PreAuthorize("isAuthenticated()") // Semua pengguna terotentikasi bisa akses
     public ResponseEntity<ApiResponse<ProfilPenggunaDto>> ambilProfil() {
         ProfilPenggunaDto profil = layananPengguna.ambilProfil();
         return ResponseEntity.ok(ApiResponse.sukses("Profil berhasil diambil", profil));
     }
 
     @PutMapping("/saya")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProfilPenggunaDto>> perbaruiProfil(
             @Valid @RequestBody PerbaruiProfilDto perbaruiProfilDto) {
         ProfilPenggunaDto diperbarui = layananPengguna.perbaruiProfil(perbaruiProfilDto);
@@ -33,6 +33,7 @@ public class PenggunaController {
     }
 
     @PutMapping("/saya/kata-sandi")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<String>> gantiKataSandi(
             @Valid @RequestBody GantiKataSandiDto gantiKataSandiDto) {
         layananPengguna.gantiKataSandi(gantiKataSandiDto);
@@ -40,8 +41,26 @@ public class PenggunaController {
     }
 
     @DeleteMapping("/saya")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<String>> hapusAkun() {
         layananPengguna.hapusAkun();
         return ResponseEntity.ok(ApiResponse.sukses("Akun berhasil dihapus", null));
     }
+
+    @PatchMapping("/saya/nama")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ProfilPenggunaDto>> updateNama(
+            @Valid @RequestBody UpdateNamaDto updateNamaDto) {
+        ProfilPenggunaDto updatedProfil = layananPengguna.updateNama(updateNamaDto);
+        return ResponseEntity.ok(ApiResponse.sukses("Nama lengkap berhasil diperbarui", updatedProfil));
+    }
+
+    @PatchMapping("/saya/email")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ProfilPenggunaDto>> updateEmail(
+            @Valid @RequestBody UpdateEmailDto updateEmailDto) {
+        ProfilPenggunaDto updatedProfil = layananPengguna.updateEmail(updateEmailDto);
+        return ResponseEntity.ok(ApiResponse.sukses("Email berhasil diperbarui", updatedProfil));
+    }
+
 }

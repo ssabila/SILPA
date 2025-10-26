@@ -17,8 +17,7 @@ public class ValidasiPerizinanServiceImpl implements ValidasiPerizinanService {
 
     private final PerizinanRepository repositoriPerizinan;
 
-    private static final int BATAS_HARI_PENGAJUAN = 7; // Maksimal 7 hari setelah kejadian
-
+    private static final int BATAS_HARI_PENGAJUAN = 7;
     public ValidasiPerizinanServiceImpl(PerizinanRepository repositoriPerizinan) {
         this.repositoriPerizinan = repositoriPerizinan;
     }

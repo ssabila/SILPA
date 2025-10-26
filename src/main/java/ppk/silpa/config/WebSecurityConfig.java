@@ -42,31 +42,42 @@ public class WebSecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests((authorize) ->
                         authorize
-                                .requestMatchers(
-                                        "/api/pengguna/saya",
-                                        "/api/pengguna/saya/**"
-                                ).authenticated()
+                                // Endpoint Pengguna
+                                .requestMatchers(HttpMethod.GET, "/api/pengguna/saya").authenticated()
+                                .requestMatchers(HttpMethod.PUT, "/api/pengguna/saya").authenticated()
+                                .requestMatchers(HttpMethod.PUT, "/api/pengguna/saya/kata-sandi").authenticated()
+                                .requestMatchers(HttpMethod.DELETE, "/api/pengguna/saya").authenticated()
+                                .requestMatchers(HttpMethod.PATCH, "/api/pengguna/saya/nama").authenticated()
+                                .requestMatchers(HttpMethod.PATCH, "/api/pengguna/saya/email").authenticated()
 
+                                // Endpoint Publik
                                 .requestMatchers(
-                                        "/api/auth/**",
-                                        "/files/**",
-                                        "/swagger-ui.html",
-                                        "/swagger-ui/**",
-                                        "/v3/api-docs",
-                                        "/v3/api-docs/**",
-                                        "/api/info-perizinan/**"
+                                        "/api/auth/**", "/files/**", "/swagger-ui.html", "/swagger-ui/**",
+                                        "/v3/api-docs", "/v3/api-docs/**", "/api/info-perizinan/**"
                                 ).permitAll()
 
-                                // semua URL untuk MAHASISWA
+                                // Endpoint Mahasiswa
                                 .requestMatchers(HttpMethod.POST, "/api/perizinan").hasAuthority("MAHASISWA")
                                 .requestMatchers(HttpMethod.GET, "/api/perizinan/saya").hasAuthority("MAHASISWA")
                                 .requestMatchers(HttpMethod.PUT, "/api/perizinan/{id}/revisi").hasAuthority("MAHASISWA")
                                 .requestMatchers(HttpMethod.DELETE, "/api/perizinan/{id}").hasAuthority("MAHASISWA")
+                                .requestMatchers(HttpMethod.PATCH, "/api/perizinan/{id}/deskripsi").hasAuthority("MAHASISWA")
+                                .requestMatchers(HttpMethod.GET, "/api/mahasiswa/dashboard").hasAuthority("MAHASISWA")
 
-                                // URL untuk ADMIN
-                                .requestMatchers("/api/perizinan/**").hasAuthority("ADMIN")
+                                // Endpoint Admin
+                                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                                .requestMatchers("/api/statistik/**").hasAuthority("ADMIN")
 
-                                // Semua request lain harus terotentikasi
+                                // Endpoint Perizinan Lainnya
+                                .requestMatchers(HttpMethod.GET, "/api/perizinan/filter").authenticated()
+                                .requestMatchers(HttpMethod.GET, "/api/perizinan/{id}").authenticated()
+                                .requestMatchers(HttpMethod.GET, "/api/perizinan").hasAuthority("ADMIN")
+                                .requestMatchers(HttpMethod.PUT, "/api/perizinan/{id}/status").hasAuthority("ADMIN")
+
+                                // Endpoint Notifikasi
+                                .requestMatchers("/api/notifikasi/saya").authenticated()
+
+                                // Default: Semua request lain harus terotentikasi
                                 .anyRequest().authenticated()
                 ).sessionManagement( session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

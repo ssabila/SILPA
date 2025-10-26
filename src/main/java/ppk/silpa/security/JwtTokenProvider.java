@@ -1,12 +1,12 @@
 package ppk.silpa.security;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -29,12 +29,13 @@ public class JwtTokenProvider {
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(expireDate)
-                .signWith(key())
+                .signWith(key()) // Gunakan metode key() yang sudah diperbaiki
                 .compact();
     }
 
     private Key key(){
-        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtSecret));
+        // Gunakan getBytes() untuk secret yang berupa string biasa (bukan Base64)
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     // Get username from JWT token
@@ -51,12 +52,13 @@ public class JwtTokenProvider {
     public boolean validateToken(String token){
         try{
             Jwts.parserBuilder()
-                    .setSigningKey(key())
+                    .setSigningKey(key()) // Gunakan metode key() yang sudah diperbaiki
                     .build()
                     .parse(token);
             return true;
-        } catch (Exception ex) {
-            // Log exception here
+        } catch (JwtException | IllegalArgumentException ex) { // Tangkap exception yang lebih spesifik
+            // Log exception di sini jika perlu (misal: logger.error("Validasi JWT gagal: {}", ex.getMessage());)
+            System.err.println("Validasi JWT gagal: " + ex.getMessage()); // Contoh logging ke console
             return false;
         }
     }

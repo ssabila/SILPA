@@ -19,16 +19,10 @@ public class DetailSesiIzin {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Relasi ke 'induk' perizinannya
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "perizinan_id", nullable = false)
     private Perizinan perizinan;
 
-    /**
-     * Tanggal spesifik mata kuliah itu
-     */
     @Column(nullable = false)
     private LocalDate tanggal;
 
@@ -38,9 +32,6 @@ public class DetailSesiIzin {
     @Column(nullable = false)
     private String namaDosen;
 
-    /**
-     * Sesi yang ditinggalkan pada tanggal tersebut
-     */
     @Column(nullable = false)
     private boolean sesi1 = false;
 

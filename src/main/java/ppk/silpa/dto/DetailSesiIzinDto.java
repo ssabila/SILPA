@@ -17,7 +17,6 @@ public class DetailSesiIzinDto {
     @NotEmpty(message = "Nama dosen tidak boleh kosong")
     private String namaDosen;
 
-    // Sesi yang di-izin-kan (true/false)
     private boolean sesi1;
     private boolean sesi2;
     private boolean sesi3;
